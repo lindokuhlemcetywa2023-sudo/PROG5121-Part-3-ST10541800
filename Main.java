@@ -18,7 +18,8 @@ public class Main {
         System.out.print("Enter cellphone (+27 format): ");
         String cell = scanner.nextLine();
 
-        String regResult = login.registerUser(username, password, cell);
+        String regResult = login.registerUser(
+    username, password, cell, firstName, lastName);
         System.out.println(regResult);
 
         if (!regResult.contains("successfully")) {
