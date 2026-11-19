@@ -79,6 +79,10 @@ public class Main {
                 case "1":
                     System.out.print("\nHow many messages do you want to send? ");
                     int numMessages = Integer.parseInt(scanner.nextLine());
+                    if (numMessages < 1 || numMessages > MAX_MESSAGES) {
+                        System.out.println("You can only enter between 1 and 100 messages.");
+                        break;
+                    }
 
                     for (int i = 1; i <= numMessages; i++) {
                         messageCounter++;
@@ -111,6 +115,10 @@ public class Main {
                         switch (option) {
                             case "1":
                                 int idx = sentCountRef[0];
+                                if (idx >= MAX_MESSAGES) {
+                                    System.out.println( Message limit reached. Cannot send more messages.");
+                                    break;
+                                }
                                 sentMessages[idx] = message.getMessageText();
                                 sentRecipients[idx] = message.getRecipient();
                                 sentSenders[idx] = senderFullName;
@@ -122,7 +130,13 @@ public class Main {
                                 System.out.println("Message successfully sent.");
                                 break;
                             case "2":
-                                disregardedMessages[disregardedCount++] = message.getMessageText();
+                                if (disregardedCount < MAX_MESSAGES) {
+                                    disregardedMessages[disregardedCount++] = message.getMessageText();
+                                    System.out.println("Message disregarded.");
+                                } else {
+                                    System.out.println("Disregarded message limit reached.");
+                                }
+                                break;
                                 System.out.println("Press 0 to delete message.");
                                 break;
                             case "3":
