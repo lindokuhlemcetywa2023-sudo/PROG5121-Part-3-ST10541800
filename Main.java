@@ -1,5 +1,14 @@
 import java.util.Scanner;
 
+
+private static final int MAX_MESSAGES = 100;
+
+private static String[] sentMessages = new String[MAX_MESSAGES];
+private static String[] recipients = new String[MAX_MESSAGES];
+private static String[] senders = new String[MAX_MESSAGES];
+private static String[] hashes = new String[MAX_MESSAGES];
+private static String[] messageIDs = new String[MAX_MESSAGES];
+
 public class Main {
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
