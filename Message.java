@@ -28,12 +28,11 @@ public class Message {
         return String.valueOf(id);
     }
 
-    public boolean checkRecipientCell(String cellNumber) {
-        if (cellNumber != null && cellNumber.startsWith("+27") && cellNumber.length() <= 13) {
-            return true;
-        }
-        return false;
+public boolean checkRecipientCell(String cellNumber) {
+    return cellNumber != null
+            && cellNumber.matches("^\\+27[0-9]{9}$");
     }
+    
 
     public String checkMessageLength(String message) {
         if (message.length() <= 250) {
