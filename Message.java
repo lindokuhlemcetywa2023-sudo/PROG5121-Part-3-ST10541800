@@ -1,13 +1,15 @@
-import java.io.BufferedReader;
-import java.io.FileReader;
+import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 import org.json.JSONObject;
 
 public class Message {
+
     private String messageID;
     private int messageNo;
     private String recipient;
@@ -23,65 +25,52 @@ public class Message {
     }
 
     public String generateMessageID() {
-        Random rand = new Random();
-        long id = 1000000000L + (long) (rand.nextDouble() * 9000000000L);
-        return String.valueOf(id);
-    }
-    
-    public boolean checkRecipientCell(String cellNumber) {
-        return cellNumber != null
-            && cellNumber.matches("^\\+27[0-9]{9}$");
-    }
-    
-    public String createMessageHash() {
-        String[] words = messageText.trim().split("\\s+");
-        String firstWord = "";
-        String lastWord = "";
-        if (!messageText.trim().isEmpty()) {
-            firstWord = words[0];
-            lastWord = words[words.length - 1];
-        }
-        String firstTwo = messageID.substring(0, 2);
-        
-        return firstTwo + ":" + messageNo + ":"
-            + (firstWord + lastWord).toUpperCase();
-    }
-    
-    public String createMessageHash() {
-        String[] words = messageText.trim().split("\\s+");
-        String firstWord = "";
-        String lastWord = "";
-        
-        if (!messageText.trim().isEmpty()) {
-            firstWord = words[0];
-            lastWord = words[words.length - 1];
-        }
-        
-        String firstTwo = messageID.substring(0, 2);
-        
-        return firstTwo + ":" + messageNo + ":"
-            + (firstWord + lastWord).toUpperCase();
+        long number = ThreadLocalRandom.current().nextLong(1000000000L, 10000000000L);
+        return String.valueOf(number);
     }
 
-    public String printMessage() {
-        return "MessageID: " + messageID + "\n" +
-               "Message Hash: " + messageHash + "\n" +
-               "Recipient: " + recipient + "\n" +
-               "Message: " + messageText;
+    public boolean checkRecipientCell(String cellNumber) {
+        return cellNumber != null && cellNumber.matches("^\\+27[0-9]{9}$");
+    }
+
+    public boolean checkMessageLength(String message) {
+        return message != null && message.length() <= 250;
+    }
+
+    public String createMessageHash() {
+        if (messageText == null || messageText.trim().isEmpty()) {
+            return messageID.substring(0, 2) + ":" + messageNo + ":";
+        }
+
+        String[] words = messageText.trim().split("\\s+");
+        String firstWord = words[0];
+        String lastWord = words[words.length - 1];
+
+        return messageID.substring(0, 2) + ":" + messageNo + ":"
+                + firstWord + lastWord;
+    }
+
+    public void printMessage() {
+        System.out.println("Message ID: " + messageID);
+        System.out.println("Message Hash: " + messageHash);
+        System.out.println("Message Number: " + messageNo);
+        System.out.println("Recipient: " + recipient);
+        System.out.println("Message: " + messageText);
     }
 
     public void storeMessage() {
-        JSONObject obj = new JSONObject();
-        obj.put("messageID", messageID);
-        obj.put("messageNo", messageNo);
-        obj.put("recipient", recipient);
-        obj.put("messageText", messageText);
-        obj.put("messageHash", messageHash);
+        JSONObject messageObject = new JSONObject();
+        messageObject.put("messageID", messageID);
+        messageObject.put("messageNo", messageNo);
+        messageObject.put("recipient", recipient);
+        messageObject.put("messageText", messageText);
+        messageObject.put("messageHash", messageHash);
 
-        try (FileWriter file = new FileWriter("messages.json", true)) {
-            file.write(obj.toString() + "\n");
-        } catch (IOException | org.json.JSONException e) {
-            System.out.println("Error loading stored messages: " + e.getMessage());
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter("messages.json", true))) {
+            writer.write(messageObject.toString());
+            writer.newLine();
+        } catch (IOException e) {
+            System.out.println("Unable to store message: " + e.getMessage());
         }
     }
 
@@ -101,102 +90,148 @@ public class Message {
         return messageText;
     }
 
-    public static String[] loadStoredMessagesFromJson(String filePath) {
-        List<String> loaded = new ArrayList<>();
-        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                line = line.trim();
-                if (!line.isEmpty()) {
-                    JSONObject obj = new JSONObject(line);
-                    loaded.add(obj.optString("messageText", ""));
+    public int getMessageNo() {
+        return messageNo;
+    }
+
+    public static List<String> loadStoredMessagesFromJson(String filePath) {
+        List<String> storedMessages = new ArrayList<>();
+
+        try {
+            if (!Files.exists(Paths.get(filePath))) {
+                return storedMessages;
+            }
+
+            List<String> lines = Files.readAllLines(Paths.get(filePath));
+
+            for (String line : lines) {
+                if (line != null && !line.trim().isEmpty()) {
+                    try {
+                        JSONObject messageObject = new JSONObject(line);
+                        storedMessages.add(messageObject.optString("messageText", ""));
+                    } catch (org.json.JSONException e) {
+                        System.out.println("A stored message could not be read.");
+                    }
                 }
             }
         } catch (IOException e) {
+            System.out.println("Unable to load stored messages: " + e.getMessage());
         }
-        return loaded.toArray(new String[0]);
+
+        return storedMessages;
     }
 
-    public static String displaySendersAndRecipients(String[] senders, String[] recipients, int count) {
-        if (count == 0) {
-            return "No sent messages available.";
-        }
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < count; i++) {
-            sb.append("Sender: ").append(senders[i])
-              .append(" | Recipient: ").append(recipients[i]).append("\n");
-        }
-        return sb.toString().trim();
-    }
+    public static void displaySendersAndRecipients(String[] senders, String[] recipients, int count) {
+        System.out.println("Senders and Recipients:");
 
-    public static String findLongestMessage(String[] messages, int count) {
-        if (messages == null || count == 0) {
-            return "No messages available.";
-        }
-        String longest = "";
         for (int i = 0; i < count; i++) {
-            if (messages[i] != null && messages[i].length() > longest.length()) {
-                longest = messages[i];
+            if (senders[i] != null && recipients[i] != null) {
+                System.out.println("Sender: " + senders[i] + " | Recipient: " + recipients[i]);
             }
         }
-        return longest.isEmpty() ? "No messages available." : longest;
     }
 
-    public static String searchByMessageID(String[] messageIDs, String[] recipients, String[] messages, int count, String targetID) {
+    public static void findLongestMessage(String[] messages, int count) {
+        String longestMessage = "";
+
         for (int i = 0; i < count; i++) {
-            if (targetID.equals(messageIDs[i])) {
-                return "Recipient: " + recipients[i] + "\nMessage: " + messages[i];
+            if (messages[i] != null && messages[i].length() > longestMessage.length()) {
+                longestMessage = messages[i];
             }
         }
-        return "Message ID not found.";
+
+        if (longestMessage.isEmpty()) {
+            System.out.println("No messages available.");
+        } else {
+            System.out.println("Longest Message: " + longestMessage);
+        }
     }
 
-    public static String searchByRecipient(String[] recipients, String[] messages, int count, String targetRecipient) {
-        StringBuilder sb = new StringBuilder();
+    public static void searchByMessageID(String[] messageIDs, String[] recipients,
+            String[] messages, int count, String searchID) {
+
+        boolean found = false;
+
         for (int i = 0; i < count; i++) {
-            if (targetRecipient.equals(recipients[i])) {
-                sb.append(messages[i]).append("\n");
+            if (messageIDs[i] != null && messageIDs[i].equals(searchID)) {
+                System.out.println("Recipient: " + recipients[i]);
+                System.out.println("Message: " + messages[i]);
+                found = true;
             }
         }
-        String result = sb.toString().trim();
-        return result.isEmpty() ? "No messages found for recipient: " + targetRecipient : result;
+
+        if (!found) {
+            System.out.println("Message ID not found.");
+        }
     }
 
-    public static String deleteByMessageHash(String[] hashes, String[] messageIDs, String[] recipients, String[] senders, String[] messages, int[] countRef, String targetHash) {
-        int count = countRef[0];
+    public static void searchByRecipient(String[] recipients, String[] messages,
+            int count, String searchRecipient) {
+
+        boolean found = false;
+
         for (int i = 0; i < count; i++) {
-            if (targetHash.equals(hashes[i])) {
-                String deletedText = messages[i];
-                for (int j = i; j < count - 1; j++) {
-                    hashes[j] = hashes[j + 1];
+            if (recipients[i] != null && recipients[i].equals(searchRecipient)) {
+                System.out.println("Message: " + messages[i]);
+                found = true;
+            }
+        }
+
+        if (!found) {
+            System.out.println("No messages found for this recipient.");
+        }
+    }
+
+    public static void deleteByMessageHash(String[] messageHashes, String[] messageIDs,
+            String[] recipients, String[] senders, String[] messages,
+            int[] countRef, String deleteHash) {
+
+        boolean found = false;
+
+        for (int i = 0; i < countRef[0]; i++) {
+            if (messageHashes[i] != null && messageHashes[i].equals(deleteHash)) {
+                for (int j = i; j < countRef[0] - 1; j++) {
+                    messageHashes[j] = messageHashes[j + 1];
                     messageIDs[j] = messageIDs[j + 1];
                     recipients[j] = recipients[j + 1];
                     senders[j] = senders[j + 1];
                     messages[j] = messages[j + 1];
                 }
-                hashes[count - 1] = null;
-                messageIDs[count - 1] = null;
-                recipients[count - 1] = null;
-                senders[count - 1] = null;
-                messages[count - 1] = null;
-                countRef[0] = count - 1;
-                return "Message: \"" + deletedText + "\" successfully deleted.";
+
+                countRef[0]--;
+
+                messageHashes[countRef[0]] = null;
+                messageIDs[countRef[0]] = null;
+                recipients[countRef[0]] = null;
+                senders[countRef[0]] = null;
+                messages[countRef[0]] = null;
+
+                System.out.println("Message successfully deleted.");
+                found = true;
+                break;
             }
         }
-        return "Message hash not found.";
+
+        if (!found) {
+            System.out.println("Message hash not found.");
+        }
     }
 
-    public static String displayFullReport(String[] hashes, String[] recipients, String[] messages, int count) {
+    public static void displayFullReport(String[] messageHashes, String[] recipients,
+            String[] messages, int count) {
+
         if (count == 0) {
-            return "No messages to display in report.";
+            System.out.println("No sent messages to display.");
+            return;
         }
-        StringBuilder sb = new StringBuilder("=== SENT MESSAGES REPORT ===\n");
+
+        System.out.println("Full Message Report:");
+
         for (int i = 0; i < count; i++) {
-            sb.append("Message Hash: ").append(hashes[i]).append("\n")
-              .append("Recipient: ").append(recipients[i]).append("\n")
-              .append("Message: ").append(messages[i]).append("\n")
-              .append("----------------------------\n");
+            System.out.println("Message Hash: " + messageHashes[i]);
+            System.out.println("Recipient: " + recipients[i]);
+            System.out.println("Message: " + messages[i]);
+            System.out.println("------------------------------");
         }
-        return sb.toString().trim();
     }
 }
