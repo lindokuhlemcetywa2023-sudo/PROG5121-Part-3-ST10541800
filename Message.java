@@ -27,29 +27,40 @@ public class Message {
         long id = 1000000000L + (long) (rand.nextDouble() * 9000000000L);
         return String.valueOf(id);
     }
-
-public boolean checkRecipientCell(String cellNumber) {
-    return cellNumber != null
+    
+    public boolean checkRecipientCell(String cellNumber) {
+        return cellNumber != null
             && cellNumber.matches("^\\+27[0-9]{9}$");
     }
     
-
-    public String checkMessageLength(String message) {
-        if (message.length() <= 250) {
-            return "Message ready to send.";
-        } else {
-            int excess = message.length() - 250;
-            return "Message exceeds 250 characters by " + excess + ", please reduce size.";
-        }
-    }
-
     public String createMessageHash() {
         String[] words = messageText.trim().split("\\s+");
-        String firstWord = words.length > 0 ? words[0] : "";
-        String lastWord = words.length > 0 ? words[words.length - 1] : "";
-
-        String firstTwo = messageID.length() >= 2 ? messageID.substring(0, 2) : messageID;
-        return firstTwo + ":" + messageNo + ":" + (firstWord + lastWord).toUpperCase();
+        String firstWord = "";
+        String lastWord = "";
+        if (!messageText.trim().isEmpty()) {
+            firstWord = words[0];
+            lastWord = words[words.length - 1];
+        }
+        String firstTwo = messageID.substring(0, 2);
+        
+        return firstTwo + ":" + messageNo + ":"
+            + (firstWord + lastWord).toUpperCase();
+    }
+    
+    public String createMessageHash() {
+        String[] words = messageText.trim().split("\\s+");
+        String firstWord = "";
+        String lastWord = "";
+        
+        if (!messageText.trim().isEmpty()) {
+            firstWord = words[0];
+            lastWord = words[words.length - 1];
+        }
+        
+        String firstTwo = messageID.substring(0, 2);
+        
+        return firstTwo + ":" + messageNo + ":"
+            + (firstWord + lastWord).toUpperCase();
     }
 
     public String printMessage() {
@@ -69,8 +80,8 @@ public boolean checkRecipientCell(String cellNumber) {
 
         try (FileWriter file = new FileWriter("messages.json", true)) {
             file.write(obj.toString() + "\n");
-        } catch (IOException e) {
-            System.out.println("Error storing message: " + e.getMessage());
+        } catch (IOException | org.json.JSONException e) {
+            System.out.println("Error loading stored messages: " + e.getMessage());
         }
     }
 
@@ -119,16 +130,16 @@ public boolean checkRecipientCell(String cellNumber) {
     }
 
     public static String findLongestMessage(String[] messages, int count) {
-        if (count == 0 || messages == null) {
+        if (messages == null || count == 0) {
             return "No messages available.";
         }
-        String longest = messages[0];
-        for (int i = 1; i < count; i++) {
+        String longest = "";
+        for (int i = 0; i < count; i++) {
             if (messages[i] != null && messages[i].length() > longest.length()) {
                 longest = messages[i];
             }
         }
-        return longest;
+        return longest.isEmpty() ? "No messages available." : longest;
     }
 
     public static String searchByMessageID(String[] messageIDs, String[] recipients, String[] messages, int count, String targetID) {
